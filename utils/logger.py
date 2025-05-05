@@ -14,30 +14,30 @@ class LogFormat(str, Enum):
 
 
 class Logger:
-  def __init__(self, log_level: str = "DEBUG", log_format: LogFormat = LogFormat.CONSOLE):
+  def __init__(self, log_level: str = "DEBUG", log_format: LogFormat = LogFormat.JSON):
     self.log_level = log_level
     self.log_format = log_format
 
   @staticmethod
-  def rename_event_key(_, __, event_dict: EventDict) -> EventDict:
+  def __rename_event_key(_, __, event_dict: EventDict) -> EventDict:
     event_dict["message"] = event_dict.pop("event")
 
     return event_dict
 
   @staticmethod
-  def drop_color_message_key(_, __, event_dict: EventDict) -> EventDict:
+  def __drop_color_message_key(_, __, event_dict: EventDict) -> EventDict:
     event_dict.pop("color_message", None)
 
     return event_dict
 
-  def get_processors(self) -> list[Processor]:
+  def __get_processors(self) -> list[Processor]:
     timestamper = structlog.processors.TimeStamper(fmt="iso")
     processors = [
       structlog.contextvars.merge_contextvars,
       structlog.stdlib.add_log_level,
       structlog.stdlib.add_logger_name,
       structlog.stdlib.PositionalArgumentsFormatter(),
-      self.drop_color_message_key,
+      self.__drop_color_message_key,
       timestamper,
       structlog.processors.UnicodeDecoder(),
       structlog.processors.StackInfoRenderer(),
@@ -49,13 +49,13 @@ class Logger:
     ]
 
     if self.log_format == LogFormat.JSON:
-      processors.append(self.rename_event_key)
+      processors.append(self.__rename_event_key)
       processors.append(structlog.processors.format_exc_info)
 
     return processors
 
   @staticmethod
-  def clear_uvicorn_logger() -> None:
+  def __clear_uvicorn_logger() -> None:
     for log in ["uvicorn", "uvicorn.error", "uvicorn.access"]:
       logger = logging.getLogger(log)
       logger.handlers.clear()
@@ -64,7 +64,7 @@ class Logger:
         logger.setLevel(logging.WARNING)
 
   @staticmethod
-  def configure_structlog(processors: list[Processor]) -> None:
+  def __configure_structlog(processors: list[Processor]) -> None:
     structlog.configure(
       processors=processors + [
         structlog.stdlib.ProcessorFormatter.wrap_for_formatter
@@ -73,7 +73,7 @@ class Logger:
       cache_logger_on_first_use=True
     )
 
-  def configure_logging(self, processors: list[Processor]) -> logging.Logger:
+  def __configure_logging(self, processors: list[Processor]) -> logging.Logger:
     if self.log_format == LogFormat.JSON:
       renderer = structlog.processors.JSONRenderer()
     else:
@@ -98,11 +98,11 @@ class Logger:
 
     return root_logger
 
-  def configure(self) -> None:
-    shared_processors = self.get_processors()
-    self.configure_structlog(shared_processors)
-    root_logger = self.configure_logging(shared_processors)
-    self.clear_uvicorn_logger()
+  def __configure(self) -> None:
+    shared_processors = self.__get_processors()
+    self.__configure_structlog(shared_processors)
+    root_logger = self.__configure_logging(shared_processors)
+    self.__clear_uvicorn_logger()
 
     def handle_exception(exc_type, exc_value, exc_traceback):
       if issubclass(exc_type, KeyboardInterrupt):
@@ -115,7 +115,7 @@ class Logger:
     sys.excepthook = handle_exception
 
   def setup_logging(self) -> None:
-    self.configure()
+    self.__configure()
 
 
 log: BoundLogger = structlog.get_logger()
