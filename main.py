@@ -3,6 +3,7 @@ from routers import chat_router
 from config.environment import config
 from utils.logger import Logger
 from contextlib import asynccontextmanager
+from middlewares.logging_middleware import LoggingMiddleware
 import uvicorn
 
 
@@ -14,6 +15,8 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
   app = FastAPI(lifespan=lifespan)
+
+  app.add_middleware(LoggingMiddleware)
 
   app.include_router(chat_router.router)
 

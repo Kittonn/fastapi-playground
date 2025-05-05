@@ -7,8 +7,6 @@ import structlog
 import logging
 import sys
 
-# https://github.com/VendiTech/vendi/blob/022f4e366966072a34b265b04e471831402492ce/mspy_vendi/core/logger.py
-
 
 class LogFormat(str, Enum):
   JSON = "json",
@@ -16,7 +14,7 @@ class LogFormat(str, Enum):
 
 
 class Logger:
-  def __init__(self, log_level: str = "INFO", log_format: LogFormat = LogFormat.CONSOLE):
+  def __init__(self, log_level: str = "DEBUG", log_format: LogFormat = LogFormat.CONSOLE):
     self.log_level = log_level
     self.log_format = log_format
 
@@ -59,8 +57,11 @@ class Logger:
   @staticmethod
   def clear_uvicorn_logger() -> None:
     for log in ["uvicorn", "uvicorn.error", "uvicorn.access"]:
-      logging.getLogger(log).handlers.clear()
-      logging.getLogger(log).propagate = True
+      logger = logging.getLogger(log)
+      logger.handlers.clear()
+      logger.propagate = True
+      if log == "uvicorn.access":
+        logger.setLevel(logging.WARNING)
 
   @staticmethod
   def configure_structlog(processors: list[Processor]) -> None:
@@ -113,10 +114,8 @@ class Logger:
 
     sys.excepthook = handle_exception
 
-  def setup_logging(self) -> BoundLogger:
+  def setup_logging(self) -> None:
     self.configure()
 
-    return structlog.get_logger()
 
-
-# log = Logger().setup_logging()
+log: BoundLogger = structlog.get_logger()
